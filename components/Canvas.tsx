@@ -1,8 +1,9 @@
 import styles from '../styles/Home.module.css';
-import {MutableRefObject, useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import * as d3 from 'd3';
 const D3_TARGET = 'D3_TARGET_42060';
-const COUNT = 300;
+const COUNT = 500;
+const ITERATIONS = 20;
 export default function Canvas() {
     const [weavr, setWeavr] = useState<Weavr>();
     const [hide, setHide] = useState(false);
@@ -32,7 +33,7 @@ export default function Canvas() {
         }
     }, [weavr, canvasContainer]);
     useEffect(() => {
-        if (start && step < 1000) {
+        if (start && step * ITERATIONS < 675) {
             weavr.start(() => setStep((s) => s + 1));
         }
     }, [start, step]);
@@ -56,13 +57,14 @@ export default function Canvas() {
                             start ? setStart(false) : setStart(true)
                         }
                     >
-                        {start ? step : 'start'}
+                        {start ? step * ITERATIONS : 'start'}
                     </button>
                     <button
                         className={styles.code}
                         onClick={() => {
                             weavr.reset();
                             canvasContainer.reset();
+                            setStep(0);
                         }}
                     >
                         reset
@@ -81,17 +83,19 @@ export default function Canvas() {
 
 interface IPixel {
     v: number;
-    points: number[][];
+    points: number[];
+    line: number[][];
 }
 
 function pixel(
     v: number = Infinity,
-    p0: number[] = [],
-    p1: number[] = []
+    p: number[] = [],
+    line: number[][] = []
 ): IPixel {
     return {
         v,
-        points: [p0, p1],
+        points: p,
+        line,
     };
 }
 
@@ -159,8 +163,8 @@ class Weavr {
             .attr('fill', 'blue')
             .attr('transform', (d) => `translate(${d})`);
     }
-    paintLine(points: number[][]) {
-        const [[x0, y0], [x1, y1]] = points;
+    paintLine(points: number[]) {
+        const [x0, y0, x1, y1] = points;
         this.svg
             .append('line')
             .attr('x1', x0)
@@ -170,36 +174,38 @@ class Weavr {
             .attr('stroke', 'black')
             .attr('stroke-width', '0.5');
     }
-    start(callback: () => void, iterations = 5, samples = COUNT / 2) {
+    start(callback: () => void, iterations = ITERATIONS, samples = COUNT / 2) {
         let lines: IPixel[] = [];
-        const rPoint = () =>
-            this.points[Math.floor(Math.random() * this.config.count)];
+        const rPoint = () => Math.floor(Math.random() * this.config.count);
         // for this many iterations
         for (let i = 0; i < iterations; i++) {
             // find darkest cross sectional line
             let darkest: IPixel = pixel();
-            // from this many random samples
+            // from this random point
             for (let j = 0; j < samples; j++) {
-                let len = 0; // line length
+                const [x0, y0] = this.points[rPoint()];
+                const [x1, y1] = this.points[rPoint()];
+
+                const line: number[][] = [];
                 let sum = 0; // average rgb brightness
-                const [x0, y0] = rPoint();
-                const [x1, y1] = rPoint();
                 // use bresenham's algo
-                this.canvas.bline([x0, y0, x1, y1], (x, y) => {
-                    len++;
+                const coords = [x0, y0, x1, y1];
+                this.canvas.bline(coords, (x, y) => {
+                    line.push([x, y]);
                     sum += this.canvas.getPixelBrightness(x, y);
                 });
-                const avg = sum / len;
+                const avg = sum / line.length;
                 if (avg < darkest.v) {
-                    darkest = pixel(avg, [x0, y0], [x1, y1]);
+                    darkest = pixel(avg, coords, line);
                 }
             }
-            // paint darkest on canvas
-            this.canvas.paintLine(darkest.points);
-            // paint all svg lines at end of process
+            // apply darkest line to data array
+            darkest.line.forEach(([x, y]) => this.canvas.setDataPoint(x, y));
+            // add to lines queue (svg not appended yet)
             lines.push(darkest);
         }
         for (let line of lines) {
+            // this.canvas.paintLine(line.points);
             this.paintLine(line.points);
         }
         callback();
@@ -226,11 +232,11 @@ class CanvasContainer {
     loadImage(callback: () => void) {
         const img = new Image();
         this.img = img;
-        img.src = 'denholm.png';
+        img.src = 'puppers.png';
         img.onload = () => {
             const c = this.canvas;
-            img.width = 400;
-            img.height = 400;
+            img.width = 600;
+            img.height = 600;
             c.width = img.width;
             c.height = img.height;
             img.onload = undefined;
@@ -279,14 +285,21 @@ class CanvasContainer {
         const b = p.reduce((a, x) => a + x, 0);
         return b;
     }
-    paintLine([[x0, y0], [x1, y1]]: number[][]) {
+    paintLine([x0, y0, x1, y1]: number[]) {
         this.ctx.lineWidth = 0.5;
         this.ctx.strokeStyle = 'rgb(255,255,255)';
         this.ctx.beginPath();
         this.ctx.moveTo(x0, y0);
         this.ctx.lineTo(x1, y1);
         this.ctx.stroke();
-        this.data = this.getImageData().data;
+        // this.data = this.getImageData().data;
+    }
+    setDataPoint(x: number, y: number, c: number = 255) {
+        var n = (y * this.canvas.width + x) * 4;
+        this.data[n] = c;
+        this.data[n + 1] = c;
+        this.data[n + 2] = c;
+        this.data[n + 3] = c;
     }
 }
 const randomColor = () => Math.floor(Math.random() * 16777215).toString(16);
