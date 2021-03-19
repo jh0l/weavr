@@ -9,6 +9,7 @@ export default function Canvas() {
     const [hide, setHide] = useState(false);
     const [start, setStart] = useState(false);
     const [step, setStep] = useState(0);
+    const [input, setInput] = useState('');
     const canvas = useRef<HTMLCanvasElement>();
     const [canvasContainer, setCanvasContainer] = useState<CanvasContainer>();
     const target = useRef<HTMLDivElement>();
@@ -33,7 +34,7 @@ export default function Canvas() {
         }
     }, [weavr, canvasContainer]);
     useEffect(() => {
-        if (start && step * ITERATIONS < 675) {
+        if (start && step < (parseInt(input) || 100)) {
             weavr.start(() => setStep((s) => s + 1));
         }
     }, [start, step]);
@@ -75,6 +76,10 @@ export default function Canvas() {
                     >
                         {hide ? 'show' : 'hide'}
                     </button>
+                    <input
+                        value={input}
+                        onChange={({target}) => setInput(target.value)}
+                    />
                 </>
             )}
         </div>
