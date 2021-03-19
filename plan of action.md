@@ -8,9 +8,9 @@
     5. [x] for `n` iterations
         1. [x] get size `o` list of random cross sections of points
             1. [x] iterate list finding darkest average line
-                1. [ ] use bresenham's algo to average line pixel brightness
-        2. [ ] draw line for darkest average cross section
-        3. [ ] add white to image where new cross section is
+                1. [x] use bresenham's algo to average line pixel brightness
+        2. [x] draw line for darkest average cross section
+        3. [x] add white to image where new cross section tracing bresenham line
 2. [ ] improvements
     1. [ ] controls for `l`, `n`, `o`
     2. [ ] custom image
